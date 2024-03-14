@@ -98,9 +98,11 @@
 
 <?php
 function parseVMessLink($vmess_link) {
+    // 去除开头的 "vmess://" 部分
     $decoded_link = base64_decode(str_replace('vmess://', '', $vmess_link));
-    $config = json_decode($decoded_link, true);
-    return $config;
+    // 解析 JSON 格式的数据
+    $vmess_config = json_decode($decoded_link, true);
+    return $vmess_config;
 }
 
 function parseLink($link) {
@@ -111,14 +113,20 @@ function parseLink($link) {
         $parsed_data['password'] = $matches[2];
         $host_and_port = explode(':', $matches[4]); // 分割 Host 和 Port
         $parsed_data['host'] = $host_and_port[0]; // Host
-        $parsed_data['port'] = $matches[5];
+        $parsed_data['port'] = isset($host_and_port[1]) ? $host_and_port[1] : ''; // Port
         $parsed_data['path'] = $matches[6];
         $parsed_data['query'] = $matches[7];
     }
     return $parsed_data;
 }
 
-// 发送 cURL 请求并获取结果
+
+?>
+<?php
+
+
+
+
 function getIpInfo($host) {
     $url = "http://ip-api.com/json/{$host}";
     $ch = curl_init();
@@ -128,6 +136,32 @@ function getIpInfo($host) {
     curl_close($ch);
     return $response;
 }
+function getIpInfoWithRetry($host, $maxRetries = 3, $retryDelay = 1.5) {
+    $retryCount = 0;
+
+    while ($retryCount < $maxRetries) {
+        $url = "http://ip-api.com/json/{$host}";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // 检查是否成功获取响应
+        if ($httpCode == 200) {
+            return $response; // 返回响应
+        } else {
+            // 请求失败，增加重试次数，并等待一段时间后重试
+            $retryCount++;
+            sleep($retryDelay); // 等待一段时间后重试
+        }
+    }
+
+    return false; // 超过最大重试次数，返回失败
+}
+
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['links'])) {
@@ -137,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 开始表格
         echo "<div class='table-container'>";
         echo "<table>";
-        echo "<tr><th>序号</th><th>Host</th><th>IP</th><th>国家</th><th>国家代码</th><th>城市</th><th>ISP</th><th>AS名称</th><th>Org</th><th>备注</th></tr>";
+        echo "<tr><th>序号</th><th>Host</th><th>IP</th><th>端口</th><th>国家</th><th>国家代码</th><th>城市</th><th>ISP</th><th>Org</th><th>备注</th></tr>";
 
         // 初始化文本框内容
         $textAreaContent = "";
@@ -152,20 +186,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if ($parsed_data['protocol'] === 'vmess') {
                     $vmess_config = parseVMessLink($link);
                     if (!empty($vmess_config['add'])) {
-                        $host = strtok($vmess_config['add'], ':'); // 去除 ":" 以及之后的内容
-                        $ip_info = getIpInfo($host);
+                        $host = strtok($vmess_config['add'], ':');
+                        $port=$vmess_config['port'];
+                        // $ip_info = getIpInfoWithRetry($host);
+                        $ip_info = getIpInfoWithRetry($host);
+
                         $ip_data = json_decode($ip_info, true);
 
                         $isp = $ip_data['isp'];
                         $countryCode = $ip_data['countryCode'];
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
-                        
-                        $remarks = str_replace([', Inc.',', Inc',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
                         $encoded_vmess_link = base64_encode(json_encode($vmess_config)); // 重新编码为 vmess 格式
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$ip_data['query']}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['as']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>vmess://{$encoded_vmess_link}</p>";
 
                         // 添加链接到文本框内容
@@ -174,23 +212,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 } else {
                     if (!empty($parsed_data['host'])) {
                         $host = strtok($parsed_data['host'], ':'); // 去除 ":" 以及之后的内容
-                        $ip_info = getIpInfo($host);
+                        // $ip_info = getIpInfo($host);
+                        $ip_info = getIpInfoWithRetry($host);
+                        $port=$parsed_data['port'];
                         $ip_data = json_decode($ip_info, true);
 
                         $isp = $ip_data['isp'];
                         $countryCode = $ip_data['countryCode'];
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
-                        
-                        $remarks = str_replace([', Inc.',', Inc',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
-                        
-                        if (strpos($remarks, 'Alibaba (US) Technology Co., Ltd.-HK') !== false) {
-                            $remarks = 'Alibaba (US)-HK';
-                        } elseif (strpos($isp, 'Microsoft Corporation') !== false || strpos($isp, 'DMIT Cloud Services') !== false) {
-                            // 保留原始备注
-                        } elseif (strpos($remarks, 'Technology Co., Ltd.') !== false) {
-                            $remarks = str_replace(' Technology Co., Ltd.', '', $remarks);
-                        }
+
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
+
 
                         // 获取 '#' 之前的内容作为链接
                         $link_before_hash = strtok($link, '#');
@@ -199,10 +233,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $link_with_remarks = $link_before_hash . '#' . $remarks;
 
                         // 添加相应的格式头部
-                        $reconstructed_link = $parsed_data['protocol'] . '://' . $parsed_data['password'] . '@' . $parsed_data['host'] . 
+                        $reconstructed_link = $parsed_data['protocol'] . '://' . $parsed_data['password'] . '@' . $parsed_data['host'] .
                                             ':' . $parsed_data['port'] . '/' . $parsed_data['path'] . '#' . $parsed_data['query'];
 
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$ip_data['query']}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['as']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>{$link_with_remarks}</p>";
 
                         // 添加链接到文本框内容
