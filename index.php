@@ -198,7 +198,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
@@ -222,7 +222,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
 
 
