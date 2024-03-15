@@ -78,6 +78,26 @@
         th {
             background-color: #f2f2f2;
         }
+        footer {
+        background-color: #f2f2f2;
+        padding: 20px;
+        text-align: center;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .github a {
+            text-decoration: none;
+            color: #333;
+        }
+
+        .github a:hover {
+            color: #007bff;
+        }
+
     </style>
 </head>
 <body>
@@ -198,7 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
@@ -222,7 +242,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
 
 
@@ -265,7 +285,20 @@ function copyToClipboard() {
     alert('链接已复制到剪贴板');
 }
 </script>
-
+<footer>
+    <div class="copyright">
+        &copy; 2024 JIEMO. All rights reserved.
+    </div>
+    <div class="github">
+        <a href="https://github.com/jiemo9527/HPWRYF" target="_blank">Jump to Github project</a>
+    </div>
+</footer>
+<script>
+    // 获取GitHub链接元素
+    var githubLink = document.querySelector('.github a');
+    // 打印GitHub链接地址到控制台
+    console.log('GitHub地址：', githubLink.getAttribute('href'));
+</script>
 </div>
 </body>
 </html>
