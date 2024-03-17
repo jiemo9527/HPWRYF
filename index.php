@@ -218,8 +218,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
                         $encoded_vmess_link = base64_encode(json_encode($vmess_config)); // 重新编码为 vmess 格式
@@ -242,8 +243,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
+                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+
 
 
                         // 获取 '#' 之前的内容作为链接
