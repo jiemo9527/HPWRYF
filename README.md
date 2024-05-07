@@ -15,4 +15,3 @@ waiting....
 
 ## preview
 ![图片](/Snipaste.png)
-[一个demo 地址](http://v2check.cc.jie02.link)
