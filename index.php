@@ -195,7 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // 初始化文本框内容
         $textAreaContent = "";
-
+        $rrr=[' INFORMATION TECHNOLOGY (HONGKONG) CO., LIMITED', ' Abr Arvan Co. ( Private Joint Stock)', ' INFORMATION TECHNOLOGY (HK) LIMITED', ' Posts and Telecommunications Group', ' T Broadband Public Company Limited', ' Bilisim Teknolojileri A.S.', ' communications corporation', ' Network Technology Co Ltd', ' (US) Technology Co., Ltd.', ' USA Shared Services Inc.', '(US) Technology Co., Ltd.', ' Communication Co., ltd.', ' (HK) Network Technology', ' Solutions Sdn. Bhd.', ' Digital Global Inc', ' Technologies Inc.', ' International LTD', ' International Ltd', ' Cloud HK Limited', ' Cloud Computing', ' Hosting Sdn Bhd', ' Private Limited', ' Japan Co., Ltd.', ' Communications', ' Cloud Services', ' Data Centers.', ' (HK) Network', ' AFRICA CLOUD', ' Networks Ltd', ' Networks Inc', ' Link Limited', ' Technologies', ' Corporation', ' Centers II', ' Enterprise', ' Labs S.A.', '.com, Inc.', ' Solutions', ' Pte. Ltd', ' TECH INC', ' Host Ltd', 'Zhejiang ', ' Sdn Bhd', ' Pty Ltd', ' Limited', ' Centers', '.com LLC', ' Hosting', ' NETWORK', ' Network', ' Online', ' Global', ', Inc.', ', inc.', ' Host.', ', Inc', ', LLC', ' Inc.', ' GmbH', ' LLC', ' Inc', ' LTD', '.com', ' SRL', ' Ltd'];
         // 解析所有的链接
         foreach ($links as $link) {
             $link = trim($link);
@@ -218,8 +218,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
+                        $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
+                        $remarks = str_replace(['The Constant Company'],'Constant',$remarks);
+                        $remarks = str_replace(['Jerng Yue Lee trading as Evoxt Enterprise'],'Evoxt',$remarks);
+
+                        $remarks = str_replace($rrr, '', $remarks);
+
+
+
 
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
@@ -243,8 +250,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $org = $ip_data['org'];
                         $remarks = $isp . '-' . $countryCode;
 
-                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited','OPHL'],'Tencent',$remarks);
-                        $remarks = str_replace([' Technologies Inc.','.com, Inc.','Zhejiang ',' Network Technology Co Ltd',', Inc.',', Inc',' Cloud Computing',' Pte. Ltd.',' Communications',' Cloud HK Limited',' Host Ltd',' communications corporation',' Digital Global Inc',' Networks Ltd',', LLC',' LLC',' Hosting Sdn Bhd', ' Cloud Services', ' Networks Inc',' Inc', ' Corporation',' Pty Ltd',' Limited',' (US) Technology Co., Ltd.','.com LLC','(US) Technology Co., Ltd.'], '', $remarks);
+                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
+                        $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
+                        $remarks = str_replace(['The Constant Company'],'Constant',$remarks);
+                        $remarks = str_replace(['Jerng Yue Lee trading as Evoxt Enterprise'],'Evoxt',$remarks);
+
+                        $remarks = str_replace($rrr, '', $remarks);
+
 
 
 
@@ -300,6 +312,7 @@ function copyToClipboard() {
     var githubLink = document.querySelector('.github a');
     // 打印GitHub链接地址到控制台
     console.log('GitHub地址：', githubLink.getAttribute('href'));
+
 </script>
 </div>
 </body>
