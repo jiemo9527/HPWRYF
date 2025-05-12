@@ -231,7 +231,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
                         $encoded_vmess_link = base64_encode(json_encode($vmess_config)); // 重新编码为 vmess 格式
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>vmess://{$encoded_vmess_link}</p>";
 
                         // 添加链接到文本框内容
@@ -270,7 +270,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $reconstructed_link = $parsed_data['protocol'] . '://' . $parsed_data['password'] . '@' . $parsed_data['host'] .
                                             ':' . $parsed_data['port'] . '/' . $parsed_data['path'] . '#' . $parsed_data['query'];
 
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>{$link_with_remarks}</p>";
 
                         // 添加链接到文本框内容
