@@ -13,7 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* 使用 min-height 以确保即使内容少也能填满整个屏幕 */
+            min-height: 100vh;
             background-color: #f4f4f4;
         }
 
@@ -24,8 +24,8 @@
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
-            overflow-y: auto; /* 添加垂直滚动条 */
-            max-height: calc(100vh - 40px); /* 高度不超过可视区域减去顶部和底部间距 */
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
         }
 
         h1 {
@@ -44,7 +44,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             resize: vertical;
-            box-sizing: border-box; /* 确保 padding 不会影响宽度 */
+            box-sizing: border-box;
         }
 
         input[type="submit"], button {
@@ -87,11 +87,6 @@
         text-align: center;
         }
 
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-        }
-
         .github a {
             text-decoration: none;
             color: #333;
@@ -111,187 +106,161 @@
         <form method="post">
             <textarea id="links" name="links" rows="10" cols="50" placeholder="请在此处粘贴链接，每行一个..."></textarea><br>
             <input type="submit" value="解析">
-            <?php
-              // 添加复制重命名配置按钮
-              echo "<button type='button' onclick='copyToClipboard()'>复制Remark配置</button>";
-              // 添加导出Excel按钮
-              echo "<button type='button' onclick='exportResultsToExcel()'>导出为Excel</button>";
-            ?>
+            <button type='button' onclick='copyToClipboard()'>复制Remark配置</button>
+            <button type='button' onclick='exportResultsToExcel()'>导出为Excel</button>
         </form>
     </div>
 
 <?php
+// 解析 VMess 链接 (JSON格式)
 function parseVMessLink($vmess_link) {
-    // 去除开头的 "vmess://" 部分
-    $decoded_link = base64_decode(str_replace('vmess://', '', $vmess_link));
-    // 解析 JSON 格式的数据
-    $vmess_config = json_decode($decoded_link, true);
-    return $vmess_config;
+    $base64_part = str_replace('vmess://', '', $vmess_link);
+    $decoded_link = base64_decode($base64_part);
+    return json_decode($decoded_link, true);
 }
 
-function parseLink($link) {
+// 解析 VLESS/Trojan/Socks 等通用格式链接
+function parseGenericLink($link) {
     $parsed_data = array();
-
-    if (preg_match('/^(vless|vmess|socks|trojan|ss):\/\/([^:@]+):?([^@]*)@?([^\/#?]+):?([^\/]*)\/?([^#]*)#?(.*)$/', $link, $matches)) {
+    // 注意：已从正则表达式中移除 ss 和 vmess
+    if (preg_match('/^(vless|socks|trojan):\/\/([^:@]+):?([^@]*)@?([^\/#?]+):?([^\/]*)\/?([^#]*)#?(.*)$/', $link, $matches)) {
         $parsed_data['protocol'] = $matches[1];
-        $parsed_data['password'] = $matches[2];
-        $host_and_port = explode(':', $matches[4]); // 分割 Host 和 Port
-        $parsed_data['host'] = $host_and_port[0]; // Host
-        $parsed_data['port'] = isset($host_and_port[1]) ? $host_and_port[1] : ''; // Port
-        $parsed_data['path'] = $matches[6];
-        $parsed_data['query'] = $matches[7];
+        $host_and_port = explode(':', $matches[4]);
+        $parsed_data['host'] = $host_and_port[0];
+        $parsed_data['port'] = isset($host_and_port[1]) ? $host_and_port[1] : '';
     }
     return $parsed_data;
 }
 
-
-?>
-<?php
-
-
-
-
-function getIpInfo($host) {
-    $url = "http://ip-api.com/json/{$host}";
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return $response;
-}
-function getIpInfoWithRetry($host, $maxRetries = 3, $retryDelay = 1.5) {
+// 使用 cURL 获取 IP 地理位置信息，并带重试机制
+function getIpInfoWithRetry($host, $maxRetries = 3, $retryDelay = 1) {
     $retryCount = 0;
-
     while ($retryCount < $maxRetries) {
-        $url = "http://ip-api.com/json/{$host}";
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_URL, "http://ip-api.com/json/{$host}");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 设置超时
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        // 检查是否成功获取响应
-        if ($httpCode == 200) {
-            return $response; // 返回响应
+        if ($httpCode == 200 && $response) {
+            return $response;
         } else {
-            // 请求失败，增加重试次数，并等待一段时间后重试
             $retryCount++;
-            sleep($retryDelay); // 等待一段时间后重试
+            sleep($retryDelay);
         }
     }
-
-    return false; // 超过最大重试次数，返回失败
+    return false;
 }
 
 
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST['links'])) {
-        $links = explode("\n", $_POST['links']);
-        $linkIndex = 1; // 设置链接索引从1开始
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['links'])) {
+    $links = explode("\n", $_POST['links']);
+    $linkIndex = 1;
 
-        // 开始表格，并为其添加一个ID
-        echo "<div class='table-container'>";
-        echo "<table id='resultsTable'>"; // <-- **重要改动**
-        echo "<tr><th>序号</th><th>Host</th><th>IP</th><th>端口</th><th>国家</th><th>国家代码</th><th>城市</th><th>ISP</th><th>Org</th><th>备注</th></tr>";
+    echo "<div class='table-container'>";
+    echo "<table id='resultsTable'>";
+    echo "<tr><th>序号</th><th>Host</th><th>IP</th><th>端口</th><th>国家</th><th>国家代码</th><th>城市</th><th>ISP</th><th>Org</th><th>备注</th></tr>";
 
-        // 初始化文本框内容
-        $textAreaContent = "";
-        $rrr=[' INFORMATION TECHNOLOGY (HONGKONG) CO., LIMITED', ' Abr Arvan Co. ( Private Joint Stock)', ' INFORMATION TECHNOLOGY (HK) LIMITED', ' Posts and Telecommunications Group', ' T Broadband Public Company Limited', ' Bilisim Teknolojileri A.S.', ' communications corporation', ' Network Technology Co Ltd', ' (US) Technology Co., Ltd.', ' USA Shared Services Inc.', '(US) Technology Co., Ltd.', ' Communication Co., ltd.', ' (HK) Network Technology', ' Solutions Sdn. Bhd.', ' Digital Global Inc', ' Technologies Inc.', ' International LTD', ' International Ltd', ' Cloud HK Limited', ' Cloud Computing', ' Hosting Sdn Bhd', ' Private Limited', ' Japan Co., Ltd.', ' Communications', ' Cloud Services', ' Data Centers.', ' (HK) Network', ' AFRICA CLOUD', ' Networks Ltd', ' Networks Inc', ' Link Limited', ' Technologies', ' Corporation', ' Centers II', ' Enterprise', ' Labs S.A.', '.com, Inc.', ' Solutions', ' Pte. Ltd', ' TECH INC', ' Host Ltd', 'Zhejiang ', ' Sdn Bhd', ' Pty Ltd', ' Limited', ' Centers', '.com LLC', ' Hosting', ' NETWORK', ' Network', ' Online', ' Global', ', Inc.', ', inc.', ' Host.', ', Inc', ', LLC', ' Inc.', ' GmbH', ' LLC', ' Inc', ' LTD', '.com', ' SRL', ' Ltd'];
-        // 解析所有的链接
-        foreach ($links as $link) {
-            $link = trim($link);
-            if (!empty($link)) {
-                $parsed_data = parseLink($link);
+    $textAreaContent = "";
+    $rrr=[' INFORMATION TECHNOLOGY (HONGKONG) CO., LIMITED', ' Abr Arvan Co. ( Private Joint Stock)', ' INFORMATION TECHNOLOGY (HK) LIMITED', ' Posts and Telecommunications Group', ' T Broadband Public Company Limited', ' Bilisim Teknolojileri A.S.', ' communications corporation', ' Network Technology Co Ltd', ' (US) Technology Co., Ltd.', ' USA Shared Services Inc.', '(US) Technology Co., Ltd.', ' Communication Co., ltd.', ' (HK) Network Technology', ' Solutions Sdn. Bhd.', ' Digital Global Inc', ' Technologies Inc.', ' International LTD', ' International Ltd', ' Cloud HK Limited', ' Cloud Computing', ' Hosting Sdn Bhd', ' Private Limited', ' Japan Co., Ltd.', ' Communications', ' Cloud Services', ' Data Centers.', ' (HK) Network', ' AFRICA CLOUD', ' Networks Ltd', ' Networks Inc', ' Link Limited', ' Technologies', ' Corporation', ' Centers II', ' Enterprise', ' Labs S.A.', '.com, Inc.', ' Solutions', ' Pte. Ltd', ' TECH INC', ' Host Ltd', 'Zhejiang ', ' Sdn Bhd', ' Pty Ltd', ' Limited', ' Centers', '.com LLC', ' Hosting', ' NETWORK', ' Network', ' Online', ' Global', ', Inc.', ', inc.', ' Host.', ', Inc', ', LLC', ' Inc.', ' GmbH', ' LLC', ' Inc', ' LTD', '.com', ' SRL', ' Ltd'];
 
-                // 根据协议类型打印不同的内容
-                if ($parsed_data['protocol'] === 'vmess') {
-                    $vmess_config = parseVMessLink($link);
-                    if (!empty($vmess_config['add'])) {
-                        $host = strtok($vmess_config['add'], ':');
-                        $port=$vmess_config['port'];
-                        // $ip_info = getIpInfoWithRetry($host);
-                        $ip_info = getIpInfoWithRetry($host);
+    foreach ($links as $link) {
+        $link = trim($link);
+        if (empty($link)) continue;
 
-                        $ip_data = json_decode($ip_info, true);
+        $host = null;
+        $port = null;
+        $protocol_type = '';
+        $original_data = null; // 用于存储原始解析数据以重建链接
 
-                        $isp = $ip_data['isp'];
-                        $countryCode = $ip_data['countryCode'];
-                        $org = $ip_data['org'];
-                        $remarks = $org . '-' . $countryCode;
+        // --- **核心逻辑重构** ---
+        // 根据不同协议类型进行解析
+        if (strpos($link, 'vmess://') === 0) {
+            $protocol_type = 'vmess';
+            $parsed = parseVMessLink($link);
+            if (!empty($parsed['add'])) {
+                $host = $parsed['add'];
+                $port = $parsed['port'];
+                $original_data = $parsed;
+            }
+        } elseif (strpos($link, 'ss://') === 0) {
+            $protocol_type = 'ss';
+            $link_body = substr($link, 5); // 移除 'ss://'
+            $parts = explode('#', $link_body, 2);
+            $main_part = $parts[0];
 
-                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
-                        $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
-                        $remarks = str_replace(['The Constant Company'],'Constant',$remarks);
-                        $remarks = str_replace(['Jerng Yue Lee trading as Evoxt Enterprise'],'Evoxt',$remarks);
+            // 尝试解码 SIP002 格式: base64(method:pass@host:port)
+            $decoded = base64_decode(rtrim($main_part, "=\r\n\t"), true);
+            if ($decoded !== false && strpos($decoded, '@') !== false) {
+                list(, $host_part) = explode('@', $decoded, 2);
+                $host_port_parts = explode(':', $host_part);
+                $host = $host_port_parts[0];
+                $port = isset($host_port_parts[1]) ? $host_port_parts[1] : '';
+            }
+            // 兼容旧格式: base64(method:pass)@host:port
+            elseif (strpos($main_part, '@') !== false) {
+                list(, $host_part) = explode('@', $main_part, 2);
+                $host_port_parts = explode(':', $host_part);
+                $host = $host_port_parts[0];
+                $port = isset($host_port_parts[1]) ? $host_port_parts[1] : '';
+            }
+        } else {
+            // 处理 VLESS, Trojan 等其他类型
+            $parsed = parseGenericLink($link);
+            if (!empty($parsed['host'])) {
+                $protocol_type = $parsed['protocol'];
+                $host = $parsed['host'];
+                $port = $parsed['port'];
+            }
+        }
 
-                        $remarks = str_replace($rrr, '', $remarks);
+        // 如果成功解析出 host，则执行后续操作
+        if ($host) {
+            $ip_info_json = getIpInfoWithRetry($host);
+            $ip_data = $ip_info_json ? json_decode($ip_info_json, true) : [];
 
+            // 安全地获取IP信息
+            $country = $ip_data['country'] ?? 'N/A';
+            $countryCode = $ip_data['countryCode'] ?? 'N/A';
+            $city = $ip_data['city'] ?? 'N/A';
+            $isp = $ip_data['isp'] ?? 'N/A';
+            $org = $ip_data['org'] ?? 'N/A';
 
+            // 生成备注
+            $remarks = $org . '-' . $countryCode;
+            $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
+            $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
+            $remarks = str_replace(['The Constant Company'],'Constant',$remarks);
+            $remarks = str_replace(['Jerng Yue Lee trading as Evoxt Enterprise'],'Evoxt',$remarks);
+            $remarks = str_replace($rrr, '', $remarks);
+            $remarks = trim($remarks, '- ');
 
+            // 生成带新备注的链接
+            $new_link = '';
+            if ($protocol_type === 'vmess') {
+                $original_data['ps'] = $remarks;
+                $new_link = "vmess://" . base64_encode(json_encode($original_data));
+            } else { // 适用于 ss, vless, trojan 等
+                $link_before_hash = strtok($link, '#');
+                $new_link = $link_before_hash . '#' . urlencode($remarks); // 对备注进行URL编码，防止特殊字符问题
+            }
 
+            $textAreaContent .= $new_link . "\n";
 
-                        $vmess_config['ps'] = $remarks; // 设置 ps 为备注
-                        $encoded_vmess_link = base64_encode(json_encode($vmess_config)); // 重新编码为 vmess 格式
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
-                        // echo "<p>vmess://{$encoded_vmess_link}</p>";
+            // 在表格中显示结果
+            echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$country}</td><td>{$countryCode}</td><td>{$city}</td><td>{$isp}</td><td>{$org}</td><td>{$remarks}</td></tr>";
+            $linkIndex++;
+        }
+    } // end foreach
 
-                        // 添加链接到文本框内容
-                        $textAreaContent .= "vmess://{$encoded_vmess_link}\n";
-                    }
-                } else {
-                    if (!empty($parsed_data['host'])) {
-                        $host = strtok($parsed_data['host'], ':'); // 去除 ":" 以及之后的内容
-                        // $ip_info = getIpInfo($host);
-                        $ip_info = getIpInfoWithRetry($host);
-                        $port=$parsed_data['port'];
-                        $ip_data = json_decode($ip_info, true);
+    echo "</table>";
+    echo "</div>";
 
-                        $isp = $ip_data['isp'];
-                        $countryCode = $ip_data['countryCode'];
-                        $org = $ip_data['org'];
-                        $remarks = $org . '-' . $countryCode;
-
-                        $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
-                        $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
-                        $remarks = str_replace(['The Constant Company'],'Constant',$remarks);
-                        $remarks = str_replace(['Jerng Yue Lee trading as Evoxt Enterprise'],'Evoxt',$remarks);
-
-                        $remarks = str_replace($rrr, '', $remarks);
-
-
-
-
-                        // 获取 '#' 之前的内容作为链接
-                        $link_before_hash = strtok($link, '#');
-
-                        // 将备注替换为原链接中 '#' 之后的内容
-                        $link_with_remarks = $link_before_hash . '#' . $remarks;
-
-                        // 添加相应的格式头部
-                        $reconstructed_link = $parsed_data['protocol'] . '://' . $parsed_data['password'] . '@' . $parsed_data['host'] .
-                                                ':' . $parsed_data['port'] . '/' . $parsed_data['path'] . '#' . $parsed_data['query'];
-
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
-                        // echo "<p>{$link_with_remarks}</p>";
-
-                        // 添加链接到文本框内容
-                        $textAreaContent .= "{$link_with_remarks}\n";
-}
-}
-}
-$linkIndex++; // 递增链接索引
-}
-// 结束表格
-echo "</table>";
-echo "</div>";
-    // 将链接显示到文本框中
+    // 将生成的新链接显示在文本框中
     echo "<textarea id='linkTextArea' rows='10' cols='50'>$textAreaContent</textarea>";
-
-
-    }
 }
 ?>
 
@@ -308,49 +277,30 @@ function copyToClipboard() {
     alert('链接已复制到剪贴板');
 }
 
-// --- 从油猴脚本移植过来的功能 ---
+// --- 表格导出为Excel的功能 ---
 
-// 1. 生成随机文件名
+// 1. 生成文件名
 function generateRandomFileName() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const randomString = Array.from(
-        {length: 6},
-        () => chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
     const date = new Date();
     const dateStr = `${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-    // 使用网页标题，如果标题不存在则使用随机字符串
-    return `${document.title || randomString}_${dateStr}.xlsx`;
+    return `${document.title || 'Export'}_${dateStr}.xlsx`;
 }
 
 // 2. 导出结果表格为Excel
 function exportResultsToExcel() {
-    // 通过ID找到PHP生成的结果表格
     const table = document.getElementById('resultsTable');
-
-    // 如果表格不存在，则提示用户
-    if (!table) {
-        alert('未找到可导出的表格。请先解析链接生成表格。');
+    if (!table || table.rows.length <= 1) { // 检查表格是否存在且有数据行
+        alert('未找到可导出的数据。请先解析链接生成表格。');
         return;
     }
-
-    // 将HTML表格元素转换为一个二维数组
     const data = Array.from(table.rows).map(row =>
         Array.from(row.cells).map(cell => cell.innerText.trim())
     );
-
-    // 创建一个新的工作簿
     const wb = XLSX.utils.book_new();
-    // 将二维数组转换为一个工作表
     const ws = XLSX.utils.aoa_to_sheet(data);
-
-    // 将工作表添加到工作簿中
-    XLSX.utils.book_append_sheet(wb, ws, '解析结果'); // 给sheet命名为"解析结果"
-
-    // 生成文件名并下载Excel文件
+    XLSX.utils.book_append_sheet(wb, ws, '解析结果');
     XLSX.writeFile(wb, generateRandomFileName());
 }
-
 </script>
 <footer>
     <div class="copyright">
@@ -360,13 +310,6 @@ function exportResultsToExcel() {
         <a href="https://github.com/jiemo9527/HPWRYF" target="_blank">Jump to Github project</a>
     </div>
 </footer>
-<script>
-    // 获取GitHub链接元素
-    var githubLink = document.querySelector('.github a');
-    // 打印GitHub链接地址到控制台
-    console.log('GitHub地址：', githubLink.getAttribute('href'));
-
-</script>
 </div>
 </body>
 </html>
