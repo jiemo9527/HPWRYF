@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HPWAYF解析链接</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,9 +44,10 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             resize: vertical;
+            box-sizing: border-box; /* 确保 padding 不会影响宽度 */
         }
 
-        input[type="submit"] {
+        input[type="submit"], button {
             background-color: #4CAF50;
             color: white;
             padding: 10px 20px;
@@ -53,9 +55,10 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin: 5px;
         }
 
-        input[type="submit"]:hover {
+        input[type="submit"]:hover, button:hover {
             background-color: #45a049;
         }
 
@@ -106,13 +109,14 @@
     <h1>害魄罗柯西，味儿啊呦浮弄</h1>
     <div class="form-container">
         <form method="post">
-            <!--<label for="links">多个链接（每行一个）:</label><br>-->
-            <textarea id="links" name="links" rows="10" cols="50"></textarea><br>
+            <textarea id="links" name="links" rows="10" cols="50" placeholder="请在此处粘贴链接，每行一个..."></textarea><br>
             <input type="submit" value="解析">
             <?php
-             // 添加复制重命名配置按钮
-        echo "<button onclick='copyToClipboard()' style='margin-left: 10px; background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;'>复制Remark配置</button>";
-        ?>
+              // 添加复制重命名配置按钮
+              echo "<button type='button' onclick='copyToClipboard()'>复制Remark配置</button>";
+              // 添加导出Excel按钮
+              echo "<button type='button' onclick='exportResultsToExcel()'>导出为Excel</button>";
+            ?>
         </form>
     </div>
 
@@ -188,9 +192,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $links = explode("\n", $_POST['links']);
         $linkIndex = 1; // 设置链接索引从1开始
 
-        // 开始表格
+        // 开始表格，并为其添加一个ID
         echo "<div class='table-container'>";
-        echo "<table>";
+        echo "<table id='resultsTable'>"; // <-- **重要改动**
         echo "<tr><th>序号</th><th>Host</th><th>IP</th><th>端口</th><th>国家</th><th>国家代码</th><th>城市</th><th>ISP</th><th>Org</th><th>备注</th></tr>";
 
         // 初始化文本框内容
@@ -216,7 +220,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $isp = $ip_data['isp'];
                         $countryCode = $ip_data['countryCode'];
                         $org = $ip_data['org'];
-                        $remarks = $isp . '-' . $countryCode;
+                        $remarks = $org . '-' . $countryCode;
 
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
                         $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
@@ -231,7 +235,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         $vmess_config['ps'] = $remarks; // 设置 ps 为备注
                         $encoded_vmess_link = base64_encode(json_encode($vmess_config)); // 重新编码为 vmess 格式
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>vmess://{$encoded_vmess_link}</p>";
 
                         // 添加链接到文本框内容
@@ -248,7 +252,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $isp = $ip_data['isp'];
                         $countryCode = $ip_data['countryCode'];
                         $org = $ip_data['org'];
-                        $remarks = $isp . '-' . $countryCode;
+                        $remarks = $org . '-' . $countryCode;
 
                         $remarks = str_replace(['Shenzhen Tencent Computer Systems Company Limited'],'Tencent',$remarks);
                         $remarks = str_replace(['Hangzhou Alibaba Advertising Co'],'Alibaba',$remarks);
@@ -268,9 +272,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         // 添加相应的格式头部
                         $reconstructed_link = $parsed_data['protocol'] . '://' . $parsed_data['password'] . '@' . $parsed_data['host'] .
-                                            ':' . $parsed_data['port'] . '/' . $parsed_data['path'] . '#' . $parsed_data['query'];
+                                                ':' . $parsed_data['port'] . '/' . $parsed_data['path'] . '#' . $parsed_data['query'];
 
-                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>${port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
+                        echo "<tr><td>{$linkIndex}</td><td>{$host}</td><td>{$host}</td><td>{$port}</td><td>{$ip_data['country']}</td><td>{$ip_data['countryCode']}</td><td>{$ip_data['city']}</td><td>{$ip_data['isp']}</td><td>{$ip_data['org']}</td><td>{$remarks}</td></tr>";
                         // echo "<p>{$link_with_remarks}</p>";
 
                         // 添加链接到文本框内容
@@ -292,16 +296,65 @@ echo "</div>";
 ?>
 
 <script>
+// 用于复制 Remark 配置的函数
 function copyToClipboard() {
     var textarea = document.getElementById('linkTextArea');
+    if (!textarea || !textarea.value) {
+        alert('没有可复制的内容。');
+        return;
+    }
     textarea.select();
     document.execCommand('copy');
     alert('链接已复制到剪贴板');
 }
+
+// --- 从油猴脚本移植过来的功能 ---
+
+// 1. 生成随机文件名
+function generateRandomFileName() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const randomString = Array.from(
+        {length: 6},
+        () => chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+    const date = new Date();
+    const dateStr = `${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+    // 使用网页标题，如果标题不存在则使用随机字符串
+    return `${document.title || randomString}_${dateStr}.xlsx`;
+}
+
+// 2. 导出结果表格为Excel
+function exportResultsToExcel() {
+    // 通过ID找到PHP生成的结果表格
+    const table = document.getElementById('resultsTable');
+
+    // 如果表格不存在，则提示用户
+    if (!table) {
+        alert('未找到可导出的表格。请先解析链接生成表格。');
+        return;
+    }
+
+    // 将HTML表格元素转换为一个二维数组
+    const data = Array.from(table.rows).map(row =>
+        Array.from(row.cells).map(cell => cell.innerText.trim())
+    );
+
+    // 创建一个新的工作簿
+    const wb = XLSX.utils.book_new();
+    // 将二维数组转换为一个工作表
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // 将工作表添加到工作簿中
+    XLSX.utils.book_append_sheet(wb, ws, '解析结果'); // 给sheet命名为"解析结果"
+
+    // 生成文件名并下载Excel文件
+    XLSX.writeFile(wb, generateRandomFileName());
+}
+
 </script>
 <footer>
     <div class="copyright">
-        &copy; 2024 JIEMO. All rights reserved.
+        &copy; 2024-2025 JIEMO. All rights reserved.
     </div>
     <div class="github">
         <a href="https://github.com/jiemo9527/HPWRYF" target="_blank">Jump to Github project</a>
