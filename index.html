@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPWAYF 解析 (多线程极速版)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa; }
+        .container { width: 90%; max-width: 1000px; background-color: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); margin-bottom: 20px; max-height: 95vh; overflow-y: auto; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 24px; }
+        .form-container { text-align: center; margin-bottom: 20px; }
+        textarea { width: 100%; padding: 15px; height: 120px; border: 1px solid #ddd; border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: monospace; font-size: 13px; transition: border 0.3s; }
+        textarea:focus { border-color: #4CAF50; outline: none; }
+        .btn-group { margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        button { background-color: #4CAF50; color: white; padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 15px; font-weight: 600; }
+        button:hover { background-color: #43a047; transform: translateY(-1px); shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button:disabled { background-color: #b0bec5; cursor: not-allowed; transform: none; }
+        button.secondary { background-color: #546e7a; }
+        button.secondary:hover { background-color: #455a64; }
+        
+        .table-container { overflow-x: auto; margin-top: 25px; border-radius: 8px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
+        th { background-color: #f1f3f5; color: #495057; font-weight: 600; position: sticky; top: 0; }
+        tr:hover { background-color: #f8f9fa; }
+        
+        /* 进度条样式 */
+        .status-bar { margin-top: 15px; background: #f1f1f1; border-radius: 10px; height: 20px; overflow: hidden; position: relative; display: none; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #81C784); width: 0%; transition: width 0.3s ease; }
+        .status-text { position: absolute; width: 100%; text-align: center; top: 0; line-height: 20px; font-size: 12px; color: #333; text-shadow: 0 0 2px white; }
+        
+        footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #888; font-size: 12px; }
+        a { color: #4CAF50; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 HPWAYF 链接解析 (JS多线程版)</h1>
+    
+    <div class="form-container">
+        <textarea id="linksInput" placeholder="请在此处粘贴 VMess / VLESS / SS / Trojan 链接，每行一个..."></textarea>
+        
+        <div class="btn-group">
+            <button onclick="startProcessing()" id="btnParse">⚡ 开始极速解析</button>
+            <button onclick="copyToClipboard()" class="secondary">复制结果</button>
+            <button onclick="exportResultsToExcel()" class="secondary">导出 Excel</button>
+        </div>
+
+        <div id="statusBar" class="status-bar">
+            <div id="progressFill" class="progress-fill"></div>
+            <div id="statusText" class="status-text">准备就绪</div>
+        </div>
+    </div>
+
+    <div id="resultArea" style="display:none;">
+        <textarea id="linkTextArea" style="height: 80px; margin-bottom: 10px;" placeholder="解析后的链接将显示在这里..." readonly></textarea>
+        <div class="table-container">
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th style="width:40px">#</th>
+                        <th>Host/IP</th>
+                        <th>端口</th>
+                        <th>国家</th>
+                        <th>代码</th>
+                        <th>ISP / 组织</th>
+                        <th>备注 (Remark)</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2024 JIEMO | Powered by JavaScript (Client Side)
+    </footer>
+</div>
+
+<script>
+// 配置：并发数（建议 5-10，太高会被封）
+const CONCURRENCY_LIMIT = 5; 
+const REMOVE_KEYWORDS = [' INFORMATION TECHNOLOGY (HONGKONG) CO., LIMITED', ' Abr Arvan Co. ( Private Joint Stock)', ' INFORMATION TECHNOLOGY (HK) LIMITED', ' Posts and Telecommunications Group', ' T Broadband Public Company Limited', ' Bilisim Teknolojileri A.S.', ' communications corporation', ' Network Technology Co Ltd', ' (US) Technology Co., Ltd.', ' USA Shared Services Inc.', '(US) Technology Co., Ltd.', ' Communication Co., ltd.', ' (HK) Network Technology', ' Solutions Sdn. Bhd.', ' Digital Global Inc', ' Technologies Inc.', ' International LTD', ' International Ltd', ' Cloud HK Limited', ' Cloud Computing', ' Hosting Sdn Bhd', ' Private Limited', ' Japan Co., Ltd.', ' Communications', ' Cloud Services', ' Data Centers.', ' (HK) Network', ' AFRICA CLOUD', ' Networks Ltd', ' Networks Inc', ' Link Limited', ' EC2 (ap-northeast-1)',' cloud computing (Beijing) Co., Ltd.',' LLC'];
+
+// 工具函数
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const safeBase64Decode = (str) => {
+    try {
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        return decodeURIComponent(escape(atob(str)));
+    } catch { return ""; }
+};
+
+// 核心：带重试的 IP 查询
+async function fetchIpInfo(host, retry = 0) {
+    // 如果已经是备注过的域名，尝试提取真实域名（简单判断）
+    const cleanHost = host.split(':')[0]; 
+
+    // 使用 ipwho.is，因为它在浏览器端比较稳定，支持 CORS
+    const apiUrl = `https://ipwho.is/${cleanHost}?lang=zh-CN`;
+
+    try {
+        const res = await fetch(apiUrl);
+        // 如果遇到 429 (Too Many Requests)，抛出错误进入 catch 重试
+        if (res.status === 429) throw new Error("429");
+        
+        const data = await res.json();
+        if (!data.success) return null; // 查询失败（如内网IP）
+
+        return {
+            country: data.country || '',
+            code: data.country_code || '',
+            city: data.city || '',
+            org: data.connection?.org || data.connection?.isp || '',
+            isp: data.connection?.isp || ''
+        };
+
+    } catch (e) {
+        if (retry < 3) {
+            // 指数退避重试：第一次等 1.5秒，第二次等 3秒...
+            const waitTime = 1500 * (retry + 1);
+            console.warn(`IP查询受限 (${host})，等待 ${waitTime}ms 后重试...`);
+            await sleep(waitTime);
+            return fetchIpInfo(host, retry + 1);
+        }
+        return null;
+    }
+}
+
+// 解析单行链接
+function parseLink(line) {
+    line = line.trim();
+    if (!line) return null;
+    
+    let info = { original: line, host: '', port: '', type: '', json: null, valid: false };
+
+    try {
+        if (line.startsWith('vmess://')) {
+            info.type = 'vmess';
+            const json = JSON.parse(safeBase64Decode(line.substring(8)));
+            info.json = json;
+            info.host = json.add;
+            info.port = json.port;
+            info.valid = true;
+        } else if (line.startsWith('ss://')) {
+            info.type = 'ss';
+            let body = line.substring(5).split('#')[0];
+            // 尝试解析 SS Base64
+            if (!body.includes('@')) {
+                try {
+                    const decoded = safeBase64Decode(body);
+                    const parts = decoded.split(':'); // method:pass@host:port
+                    if (decoded.includes('@')) {
+                        const atParts = decoded.split('@');
+                        const hp = atParts[1].split(':');
+                        info.host = hp[0];
+                        info.port = hp[1];
+                    }
+                } catch {}
+            } else {
+                const atParts = body.split('@');
+                const hp = atParts[1].split(':');
+                info.host = hp[0];
+                info.port = hp[1];
+            }
+            info.valid = !!info.host;
+        } else {
+            // VLESS / Trojan 等
+            const match = line.match(/^(vless|socks|trojan):\/\/([^@]+)@([^:\/]+)(?::(\d+))?/);
+            if (match) {
+                info.type = match[1];
+                info.host = match[3];
+                info.port = match[4] || '';
+                info.valid = true;
+            }
+        }
+    } catch (e) {}
+    
+    return info.valid ? info : null;
+}
+
+// 生成备注
+function generateRemark(ipData) {
+    if (!ipData) return "Unknown";
+    let remark = `${ipData.org} - ${ipData.code}`;
+    
+    // 关键词替换
+    remark = remark.replace('Shenzhen Tencent Computer Systems Company Limited', 'Tencent');
+    remark = remark.replace('Hangzhou Alibaba Advertising Co', 'Alibaba');
+    remark = remark.replace('The Constant Company', 'Constant');
+    remark = remark.replace('Google LLC', 'Google');
+    
+    REMOVE_KEYWORDS.forEach(kw => remark = remark.replace(kw, ''));
+    return remark.replace(/^- |- $/g, '').trim() || "Unknown";
+}
+
+// 并发控制器
+async function asyncPool(poolLimit, array, iteratorFn) {
+    const ret = [];
+    const executing = [];
+    for (const item of array) {
+        const p = Promise.resolve().then(() => iteratorFn(item, array));
+        ret.push(p);
+        
+        if (poolLimit <= array.length) {
+            const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+            executing.push(e);
+            if (executing.length >= poolLimit) {
+                await Promise.race(executing);
+            }
+        }
+    }
+    return Promise.all(ret);
+}
+
+// 主逻辑
+async function startProcessing() {
+    const input = document.getElementById('linksInput').value;
+    if (!input.trim()) { alert('请先粘贴链接！'); return; }
+
+    // UI 初始化
+    const btn = document.getElementById('btnParse');
+    const tableBody = document.getElementById('tableBody');
+    const linkTextArea = document.getElementById('linkTextArea');
+    const statusBar = document.getElementById('statusBar');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('statusText');
+    
+    btn.disabled = true;
+    document.getElementById('resultArea').style.display = 'block';
+    statusBar.style.display = 'block';
+    tableBody.innerHTML = '';
+    linkTextArea.value = '';
+    
+    const lines = input.split('\n');
+    const tasks = lines.map(line => parseLink(line)).filter(i => i);
+    
+    let finishedCount = 0;
+    const totalCount = tasks.length;
+    let resultsText = [];
+    let resultsRows = []; // 暂存行数据以便排序（可选）
+
+    // 定义单个任务的处理逻辑
+    const processItem = async (item) => {
+        // 1. 查询 IP
+        const ipData = await fetchIpInfo(item.host);
+        
+        // 2. 生成备注
+        const remark = generateRemark(ipData);
+        
+        // 3. 重组链接
+        let newLink = "";
+        if (item.type === 'vmess') {
+            item.json.ps = remark;
+            newLink = "vmess://" + btoa(JSON.stringify(item.json));
+        } else {
+            const base = item.original.split('#')[0];
+            newLink = `${base}#${encodeURIComponent(remark)}`;
+        }
+
+        // 4. 更新 UI (进度条)
+        finishedCount++;
+        const percent = Math.round((finishedCount / totalCount) * 100);
+        progressFill.style.width = `${percent}%`;
+        statusText.innerText = `正在处理: ${finishedCount} / ${totalCount} (${item.host})`;
+
+        // 5. 实时添加到表格和文本框（保持响应感）
+        // 注意：因为并发，表格顺序可能会乱，这里直接按完成顺序添加
+        // 如果需要严格顺序，可以最后再统一渲染，但用户体验会觉得慢
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${finishedCount}</td>
+            <td>${item.host}</td>
+            <td>${item.port}</td>
+            <td>${ipData ? ipData.country : '-'}</td>
+            <td>${ipData ? ipData.code : '-'}</td>
+            <td>${ipData ? ipData.org : '-'}</td>
+            <td><b>${remark}</b></td>
+        `;
+        tableBody.appendChild(tr);
+        
+        // 暂存链接结果
+        return newLink;
+    };
+
+    // 开始并发执行
+    const finalLinks = await asyncPool(CONCURRENCY_LIMIT, tasks, processItem);
+    
+    // 完成
+    linkTextArea.value = finalLinks.join('\n');
+    statusText.innerText = "✅ 全部完成！";
+    btn.disabled = false;
+}
+
+// 复制功能
+function copyToClipboard() {
+    const textarea = document.getElementById('linkTextArea');
+    if(!textarea.value) return;
+    textarea.select();
+    document.execCommand('copy');
+    alert('已复制到剪贴板');
+}
+
+// Excel 导出
+function exportResultsToExcel() {
+    const table = document.getElementById('resultsTable');
+    if (table.rows.length <= 1) return;
+    const wb = XLSX.utils.table_to_book(table, {sheet: "Result"});
+    XLSX.writeFile(wb, `Parsed_Links_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+</script>
+</body>
+</html>
