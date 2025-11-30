@@ -59,4 +59,4 @@
 
 ---
 
-**Disclaimer**: This tool is for educational and network diagnostic purposes only. Please use it in compliance with local laws and regulations.
+**免责声明**：此工具仅用于测试和网络诊断目的。请在遵守当地法律法规的情况下使用。
